@@ -1,0 +1,92 @@
+docker pull ubuntu:latest
+docker run -i -t --name ubuntu_python3 -d -p 5000:5000 ubuntu:latest
+
+docker exec -it ubuntu_python3  bash
+
+################### NB!!! Make sure you are using only python3 and pip3 not python 2 and pip2 all the time ###########
+
+apt-get update
+
+apt-get install -y git-core
+
+apt-get install -y postgresql postgresql-server-dev-all libpq-dev python-psycopg2 libsasl2-dev libldap2-dev libssl-dev
+
+apt-get install -y python-dev build-essential libjpeg-dev libssl-dev libffi-dev
+
+apt-get install -y dbus libdbus-1-dev libdbus-glib-1-dev libldap2-dev libsasl2-dev
+
+# apt-get -y install python3  (only if the above commands do not work for some reason)
+apt-get -y install python3-pip
+apt-get -y install python-pip
+
+alias python=python3
+alias pip=pip3
+
+git clone --recursive https://github.com/Scifabric/pybossa
+
+# git checkout 480d5a22c2
+# git checkout python2.7
+
+cd pybossa
+
+# pip install -U pip (not needed)
+
+pip3 install -r requirements.txt
+
+cp settings_local.py.tmpl settings_local.py
+
+apt-get install -y vim
+
+vim settings_local.py
+
+cp alembic.ini.template alembic.ini
+
+apt-get install -y redis-server
+
+redis-server --port 6379 --daemonize yes
+
+redis-server --port 6400 --daemonize yes
+
+redis-cli -p 6400
+slaveof localhost 6379
+
+redis-server contrib/sentinel.conf --sentinel
+
+rqscheduler --host 127.0.0.1
+
+python app_context_rqworker.py scheduled_jobs super high medium low email maintenance
+
+service postgresql start
+
+su - postgres
+
+createuser -d -P pybossa;
+
+createdb pybossa -O pybossa;
+
+python3 cli.py db_create
+
+python3 run.py
+
+touch .pybossa.cfg
+add the following config:
+[default]
+server: http://localhost:5000
+apikey: (api-key from user info) # 419058e0-cdc5-4ed6-b6ac-6d9a07b66086
+	
+touch project.json
+#Example	
+{
+    "name": "Flickr Person Finder",
+    "short_name": "flickrperson",
+    "description": "Image pattern recognition",
+}
+
+pbs create-project
+
+touch tasks_file.json
+#Example from label-studio json works fine
+pbs add-tasks --tasks-file tasks_file.json
+
+
+
